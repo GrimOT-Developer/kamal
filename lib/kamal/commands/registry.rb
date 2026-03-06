@@ -4,10 +4,9 @@ class Kamal::Commands::Registry < Kamal::Commands::Base
 
     return if registry_config.local?
 
-    docker :login,
-      registry_config.server,
-      "-u", sensitive(Kamal::Utils.escape_shell_value(registry_config.username)),
-      "-p", sensitive(Kamal::Utils.escape_shell_value(registry_config.password))
+    pipe \
+      [ :printf, "%s", sensitive(Kamal::Utils.escape_shell_value(registry_config.password)) ],
+      docker(:login, registry_config.server, "-u", sensitive(Kamal::Utils.escape_shell_value(registry_config.username)), "--password-stdin")
   end
 
   def logout(registry_config: nil)
