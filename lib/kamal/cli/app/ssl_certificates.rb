@@ -9,7 +9,12 @@ class Kamal::Cli::App::SslCertificates
   end
 
   def run
-    if role.running_proxy? && role.proxy.custom_ssl_certificate?
+    if role.running_proxy? && (role.proxy.custom_ssl_certificate? || role.proxy.cloudflare_origin_cert?)
+      # Auto-gerar certificados Cloudflare se necessário
+      if role.proxy.cloudflare_origin_cert? && !role.proxy.custom_ssl_certificate?
+        role.proxy.auto_generate_ssl_certificate!
+      end
+      
       info "Writing SSL certificates for #{role.name} on #{host}"
       execute *app.create_ssl_directory
       if cert_content = role.proxy.certificate_pem_content

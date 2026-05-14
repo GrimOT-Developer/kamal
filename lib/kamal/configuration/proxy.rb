@@ -1,3 +1,5 @@
+require_relative "ssl/cloudflare"
+
 class Kamal::Configuration::Proxy
   include Kamal::Configuration::Validation
 
@@ -33,6 +35,35 @@ class Kamal::Configuration::Proxy
     ssl = proxy_config["ssl"]
     return false unless ssl.is_a?(Hash)
     ssl["certificate_pem"].present? && ssl["private_key_pem"].present?
+  end
+
+  def cloudflare_origin_cert?
+    ssl = proxy_config["ssl"]
+    return false unless ssl.is_a?(Hash)
+    ssl["cloudflare_origin_cert"] == true
+  end
+
+  def auto_generate_ssl_certificate!
+    return unless cloudflare_origin_cert?
+    
+    puts "🔄 Gerando Cloudflare Origin Certificate para #{hosts.join(', ')}..."
+    
+    cloudflare = Kamal::Configuration::Ssl::Cloudflare.new(config, secrets)
+    cert_data = cloudflare.generate_origin_certificate(hosts)
+    
+    # Salvar certificados em secrets temporários
+    secrets["AUTO_CERT_PEM"] = cert_data[:certificate_pem]
+    secrets["AUTO_KEY_PEM"] = cert_data[:private_key_pem]
+    
+    # Atualizar configuração SSL para usar certificados gerados
+    proxy_config["ssl"]["certificate_pem"] = "AUTO_CERT_PEM"
+    proxy_config["ssl"]["private_key_pem"] = "AUTO_KEY_PEM"
+    
+    puts "✅ Origin Certificate gerado com sucesso para domínios: #{hosts.join(', ')}"
+    
+  rescue => e
+    puts "❌ Erro ao gerar Origin Certificate: #{e.message}"
+    raise
   end
 
   def certificate_pem_content

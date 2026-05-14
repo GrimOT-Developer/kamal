@@ -12,12 +12,18 @@ class Kamal::Configuration::Validator::Proxy < Kamal::Configuration::Validator
       end
 
       if config["ssl"].is_a?(Hash)
-        if config["ssl"]["certificate_pem"].present? && config["ssl"]["private_key_pem"].blank?
+        # Validar certificados customizados tradicionais
+        if config["ssl"]["certificate_pem"].present? && config["ssl"]["private_key_pem"].blank? && !config["ssl"]["cloudflare_origin_cert"]
           error "Missing private_key_pem setting (required when certificate_pem is present)"
         end
 
-        if config["ssl"]["private_key_pem"].present? && config["ssl"]["certificate_pem"].blank?
+        if config["ssl"]["private_key_pem"].present? && config["ssl"]["certificate_pem"].blank? && !config["ssl"]["cloudflare_origin_cert"]
           error "Missing certificate_pem setting (required when private_key_pem is present)"
+        end
+
+        # Validar Cloudflare Origin Certificate
+        if config["ssl"]["cloudflare_origin_cert"] && (config["ssl"]["certificate_pem"].present? || config["ssl"]["private_key_pem"].present?)
+          error "Cannot specify both cloudflare_origin_cert and manual certificate_pem/private_key_pem"
         end
       end
 
